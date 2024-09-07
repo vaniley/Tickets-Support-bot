@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters.command import Command
 from aiogram.types import ForumTopic, FSInputFile
@@ -8,31 +9,17 @@ import sqlite3
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from dotenv import load_dotenv
 
 
-def load_env(filepath: str = ".env") -> dict:
-    """Загружает переменные окружения из .env файла.
+load_dotenv()
 
-    Args:
-        filepath: Путь к .env файлу.
+API_TOKEN = os.getenv("BOT_TOKEN")
+GROUP_ID = int(os.getenv("SUPPORT_GROUP_ID"))
 
-    Returns:
-        Словарь с переменными окружения.
-    """
-    env = {}
-    with open(filepath, "r") as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#"):
-                key, value = line.split("=", 1)
-                env[key] = value
-    return env
-
-
-config = load_env(".env")
-
-API_TOKEN = config["BOT_TOKEN"]
-GROUP_ID = config["SUPPORT_GROUP_ID"]
+MESSAGE_START = os.getenv("MESSAGE_START")
+MESSAGE_REQUEST_ACCEPTED = os.getenv("MESSAGE_REQUEST_ACCEPTED")
+MESSAGE_CLOSE_REQ = os.getenv("MESSAGE_CLOSE_REQ")
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,7 +46,7 @@ class SupportStates(StatesGroup):
 
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message, state: FSMContext):
-    await message.answer(config["MESSAGE_START"])
+    await message.answer(MESSAGE_START)
     await state.set_state(SupportStates.waiting_for_question)
 
 
@@ -155,7 +142,7 @@ async def process_user_message(message: types.Message, state: FSMContext):
 
     current_state = await state.get_state()
     if current_state == SupportStates.waiting_for_question:
-        await message.answer(config["MESSAGE_REQUEST_ACCEPTED"])
+        await message.answer(MESSAGE_REQUEST_ACCEPTED)
         await state.set_state(SupportStates.in_conversation)
 
 
@@ -169,7 +156,7 @@ async def cmd_close(message: types.Message):
             user_id = result[0]
             await bot.send_message(
                 user_id,
-                config["MESSAGE_CLOSE_REQ"],
+                MESSAGE_CLOSE_REQ,
             )
             cursor.execute("DELETE FROM topics WHERE topic_id = ?", (topic_id,))
             conn.commit()
@@ -213,6 +200,14 @@ async def handle_admin_message(message: types.Message):
                 )
         else:
             await message.answer("Не удалось найти пользователя для этой темы.")
+
+
+@dp.message()
+async def handle_all_message(message: types.Message, state: FSMContext):
+    if message.from_user.is_bot:
+        return  # Игнорируем сообщения от ботов
+
+    await process_user_message(message, state)
 
 
 async def main():

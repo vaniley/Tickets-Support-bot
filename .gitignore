@@ -1,2 +1,4 @@
 .env
 /.venv
+support_bot.db
+config.json
