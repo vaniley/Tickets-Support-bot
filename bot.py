@@ -178,7 +178,7 @@ async def cmd_close(message: types.Message):
                     f"Тема закрыта. Она будет удалена через {DELETE_DELAY} сек."
                 )
                 asyncio.create_task(
-                    delete_topic_after_delay(GROUP_ID, topic_id, DELETE_DELAY)
+                    delete_topic_after_delay(GROUP_ID, topic_id, int(DELETE_DELAY))
                 )
             else:
                 await message.answer(f"Тема закрыта.")
