@@ -21,6 +21,9 @@ MESSAGE_START = os.getenv("MESSAGE_START")
 MESSAGE_REQUEST_ACCEPTED = os.getenv("MESSAGE_REQUEST_ACCEPTED")
 MESSAGE_CLOSE_REQ = os.getenv("MESSAGE_CLOSE_REQ")
 
+DELETE_AFTER_CLOSING = os.getenv("DELETE_AFTER_CLOSING")
+DELETE_DELAY = os.getenv("DELETE_DELAY")
+
 logging.basicConfig(level=logging.INFO)
 
 storage = MemoryStorage()
@@ -146,6 +149,15 @@ async def process_user_message(message: types.Message, state: FSMContext):
         await state.set_state(SupportStates.in_conversation)
 
 
+async def delete_topic_after_delay(chat_id: int, topic_id: int, delay: int = 10):
+    await asyncio.sleep(delay)  # Ждем 10 секунд
+    try:
+        await bot.delete_forum_topic(chat_id, topic_id)
+        print(f"Тема {topic_id} удалена.")
+    except Exception as e:
+        print(f"Ошибка при удалении темы {topic_id}: {e}")
+
+
 @dp.message(Command("close"))
 async def cmd_close(message: types.Message):
     if message.chat.id == GROUP_ID:
@@ -161,7 +173,15 @@ async def cmd_close(message: types.Message):
             cursor.execute("DELETE FROM topics WHERE topic_id = ?", (topic_id,))
             conn.commit()
             await bot.close_forum_topic(GROUP_ID, topic_id)
-            await message.answer("Тема закрыта.")
+            if DELETE_AFTER_CLOSING:
+                await message.answer(
+                    f"Тема закрыта. Она будет удалена через {DELETE_DELAY} сек."
+                )
+                asyncio.create_task(
+                    delete_topic_after_delay(GROUP_ID, topic_id, DELETE_DELAY)
+                )
+            else:
+                await message.answer(f"Тема закрыта.")
         else:
             await message.answer("Не удалось найти пользователя для этой темы.")
 
