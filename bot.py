@@ -118,7 +118,7 @@ async def get_or_create_topic(message: types.Message) -> int:
     user_info = (
         f"Новый запрос в поддержку:\n\n"
         f"Имя: {user_name}\n"
-        f"ID: {user_id}\n"
+        f"ID: tg://user?id={user_id}\n"
         f"Username: @{username}"
         if username
         else "Отсутствует"
@@ -153,7 +153,6 @@ async def delete_topic_after_delay(chat_id: int, topic_id: int, delay: int = 10)
     await asyncio.sleep(delay)  # Ждем 10 секунд
     try:
         await bot.delete_forum_topic(chat_id, topic_id)
-        print(f"Тема {topic_id} удалена.")
     except Exception as e:
         print(f"Ошибка при удалении темы {topic_id}: {e}")
 
